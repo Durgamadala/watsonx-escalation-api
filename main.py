@@ -1,27 +1,26 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 app = FastAPI()
 
-# -------------------
-# Request schema
-# -------------------
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 class EscalationRequest(BaseModel):
     employee_name: str
     department: str
     issue: str
     status: str
 
-# -------------------
-# Health check
-# -------------------
 @app.get("/health")
 def health():
     return {"status": "ok"}
 
-# -------------------
-# Escalation API
-# -------------------
 @app.post("/escalate")
 def escalate(data: EscalationRequest):
     return {
