@@ -1,12 +1,15 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 import random
-import smtplib
-from email.mime.text import MIMEText
+import requests
+import os
 
-app = FastAPI(title="Escalation API", version="1.0.0")
+app = FastAPI(title="Watsonx Escalation API", version="1.0.0")
 
 
+# =========================
+# REQUEST MODEL
+# =========================
 class EscalationRequest(BaseModel):
     employee_name: str
     department: str
@@ -15,63 +18,104 @@ class EscalationRequest(BaseModel):
     email: str
 
 
+# =========================
+# ENV VARIABLE (FROM RENDER)
+# =========================
+BREVO_API_KEY = os.getenv("BREVO_API_KEY")
+
+
+# =========================
+# HEALTH CHECK
+# =========================
+@app.get("/")
+def home():
+    return {"message": "Watsonx Escalation API is running"}
+
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
 
 
+# =========================
+# ESCALATION ENDPOINT
+# =========================
 @app.post("/escalate")
 def escalate(data: EscalationRequest):
 
-    # Dynamic Ticket ID
-    ticket_id = f"INC{random.randint(10000,99999)}"
+    # Generate ticket ID
+    ticket_id = f"INC{random.randint(10000, 99999)}"
 
-    # Email configuration
-    sender_email = "durga01.madala@gmail.com"
-    sender_password = "iyhx lspm bhxo dlka"
-
+    # Email subject
     subject = f"IT Support Ticket Created - {ticket_id}"
 
-    body = f"""
-Hello {data.employee_name},
+    # Email body
+    html_content = f"""
+    <html>
+        <body>
+            <h2>IT Support Escalation</h2>
 
-Your IT issue has been successfully escalated.
+            <p>Hello {data.employee_name},</p>
 
-Ticket Details:
--------------------------
-Ticket ID: {ticket_id}
-Department: {data.department}
-Issue: {data.issue}
-Status: {data.status}
+            <p>Your issue has been escalated successfully.</p>
 
-Our support team will contact you shortly.
+            <h3>Ticket Details:</h3>
 
-Regards,
-IT Support Team
-"""
+            <ul>
+                <li><b>Ticket ID:</b> {ticket_id}</li>
+                <li><b>Employee:</b> {data.employee_name}</li>
+                <li><b>Department:</b> {data.department}</li>
+                <li><b>Issue:</b> {data.issue}</li>
+                <li><b>Status:</b> {data.status}</li>
+            </ul>
 
-    # Send email
+            <p>Our IT support team will contact you shortly.</p>
+
+            <br>
+            <p>Regards,<br><b>IT Support Team</b></p>
+        </body>
+    </html>
+    """
+
+    # Brevo API endpoint
+    url = "https://api.brevo.com/v3/smtp/email"
+
+    # Headers
+    headers = {
+        "accept": "application/json",
+        "api-key": BREVO_API_KEY,
+        "content-type": "application/json"
+    }
+
+    # Payload
+    payload = {
+        "sender": {
+            "name": "IT Support",
+            "email": "durga01.madala@gmail.com"
+        },
+        "to": [
+            {
+                "email": data.email,
+                "name": data.employee_name
+            }
+        ],
+        "subject": subject,
+        "htmlContent": html_content
+    }
+
     try:
-        msg = MIMEText(body)
-        msg["Subject"] = subject
-        msg["From"] = sender_email
-        msg["To"] = data.email
+        response = requests.post(url, json=payload, headers=headers)
 
-        server = smtplib.SMTP("smtp.gmail.com", 587)
-        server.starttls()
-        server.login(sender_email, sender_password)
-        server.sendmail(sender_email, data.email, msg.as_string())
-        server.quit()
+        return {
+            "status": "success",
+            "ticket_id": ticket_id,
+            "email_status": response.status_code,
+            "message": "Issue escalated successfully and email sent"
+        }
 
     except Exception as e:
         return {
-            "status": "failed",
-            "error": str(e)
+            "status": "error",
+            "message": str(e),
+            "ticket_id": ticket_id
         }
-
-    return {
-        "status": "success",
-        "ticket_id": ticket_id,
-        "message": "Issue escalated successfully and email sent",
-        "received_data": data.dict()
-    }
