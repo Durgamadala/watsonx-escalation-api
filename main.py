@@ -23,41 +23,51 @@ def health():
 @app.post("/escalate")
 def escalate(data: EscalationRequest):
 
-    # Generate Dynamic Ticket ID
+    # Dynamic Ticket ID
     ticket_id = f"INC{random.randint(10000,99999)}"
 
-    # Email Body
+    # Email configuration
+    sender_email = "durga01.madala@gmail.com"
+    sender_password = "iyhx lspm bhxo dlka"
+
+    subject = f"IT Support Ticket Created - {ticket_id}"
+
     body = f"""
 Hello {data.employee_name},
 
-Your issue has been escalated successfully.
+Your IT issue has been successfully escalated.
 
+Ticket Details:
+-------------------------
 Ticket ID: {ticket_id}
 Department: {data.department}
 Issue: {data.issue}
+Status: {data.status}
 
-Our support team will reach out to you shortly.
+Our support team will contact you shortly.
 
 Regards,
 IT Support Team
 """
 
-    # Your Gmail Credentials
-    sender_email = "durga01.madala@gmail.com"
-    sender_password = "iyhx lspm bhxo dlka"
+    # Send email
+    try:
+        msg = MIMEText(body)
+        msg["Subject"] = subject
+        msg["From"] = sender_email
+        msg["To"] = data.email
 
-    # Create Email
-    msg = MIMEText(body)
-    msg["Subject"] = "Issue Escalation Confirmation"
-    msg["From"] = sender_email
-    msg["To"] = data.email
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.starttls()
+        server.login(sender_email, sender_password)
+        server.sendmail(sender_email, data.email, msg.as_string())
+        server.quit()
 
-    # Send Email
-    server = smtplib.SMTP("smtp.gmail.com", 587)
-    server.starttls()
-    server.login(sender_email, sender_password)
-    server.sendmail(sender_email, data.email, msg.as_string())
-    server.quit()
+    except Exception as e:
+        return {
+            "status": "failed",
+            "error": str(e)
+        }
 
     return {
         "status": "success",
