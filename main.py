@@ -1,7 +1,11 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 
-app = FastAPI()
+app = FastAPI(
+    title="Escalation API",
+    version="1.0.0",
+    openapi_version="3.0.0"
+)
 
 class EscalationRequest(BaseModel):
     employee_name: str
@@ -15,56 +19,11 @@ def health():
     return {"status": "ok"}
 
 
-@app.post("/escalate")
+@app.post("/escalate", operation_id="escalateIssue")
 def escalate(data: EscalationRequest):
     return {
         "status": "success",
         "ticket_id": "INC12345",
         "message": "Issue escalated successfully",
         "received_data": data.dict()
-    }
-
-
-# 🔥 ADD THIS NEW ENDPOINT (IMPORTANT)
-@app.get("/watsonx-openapi")
-def watsonx_openapi():
-    return {
-        "openapi": "3.0.0",
-        "info": {
-            "title": "Escalation API",
-            "version": "1.0.0"
-        },
-        "servers": [
-            {
-                "url": "https://watsonx-escalation-api.onrender.com"
-            }
-        ],
-        "paths": {
-            "/escalate": {
-                "post": {
-                    "operationId": "escalate",
-                    "requestBody": {
-                        "required": True,
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "employee_name": {"type": "string"},
-                                        "department": {"type": "string"},
-                                        "issue": {"type": "string"},
-                                        "status": {"type": "string"}
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "responses": {
-                        "200": {
-                            "description": "OK"
-                        }
-                    }
-                }
-            }
-        }
     }
