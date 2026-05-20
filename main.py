@@ -1,0 +1,12 @@
+from fastapi import FastAPI
+
+app = FastAPI()
+
+@app.post("/escalate")
+def escalate(data: dict):
+    return {
+        "status": "success",
+        "ticket_id": "INC12345",
+        "message": "Issue escalated successfully",
+        "received_data": data
+    }
